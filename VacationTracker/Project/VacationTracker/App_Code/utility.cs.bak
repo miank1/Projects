@@ -1,0 +1,513 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Net.Mail;
+using DBHelper;
+using System.Data;
+using System.Configuration;
+using System.Text;
+
+
+namespace VacationTracker
+{
+    public class CUtility
+    {
+
+        static DBConnection dbConnection;
+        static CUtility()
+        {
+            dbConnection = new DBConnection(ConfigurationManager.AppSettings["ProjectInfo"]);
+        }
+
+        /// <summary>
+        /// this method calculates the vacation 
+        /// - also it takes care of weekends and public holidays
+        /// </summary>
+        /// <param name="FromDate">vacation start date</param>
+        /// <param name="ToDate"> vaccation end date</param>
+        /// <param name="PublicHolidayList">list of pulic holidays</param>
+        /// <returns>number of vacation</returns>
+        public static int CalculateVacation(DateTime FromDate, DateTime ToDate, List<DateTime> PublicHolidayList)
+        {
+            FromDate = FromDate.Date;
+            ToDate = ToDate.Date;
+            if (FromDate == null)
+            {
+                throw new ArgumentNullException("FromDate is null");
+            }
+            if (ToDate == null)
+            {
+                throw new ArgumentNullException("ToDate is null");
+            }
+            if (FromDate > ToDate)
+            {
+                throw new ArgumentException("Incorrect last day " + ToDate);
+            }
+            if (PublicHolidayList == null)
+            {
+                throw new ArgumentNullException("PublicHolidayList is null");
+            }
+
+            TimeSpan span = ToDate - FromDate;
+            int businessDays = span.Days + 1;
+            int fullWeekCount = businessDays / 7;
+            // find out if there are weekends during the time exceedng the full weeks
+            if (businessDays > fullWeekCount * 7)
+            {
+                // we are here to find out if there is a 1-day or 2-days weekend
+                // in the time interval remaining after subtracting the complete weeks
+                int firstDayOfWeek = FromDate.DayOfWeek == DayOfWeek.Sunday ? 7 : (int)FromDate.DayOfWeek;
+                int lastDayOfWeek = ToDate.DayOfWeek == DayOfWeek.Sunday ? 7 : (int)ToDate.DayOfWeek;
+
+                if (lastDayOfWeek < firstDayOfWeek)
+                    lastDayOfWeek += 7;
+                if (firstDayOfWeek <= 6)
+                {
+                    if (lastDayOfWeek >= 7)// Both Saturday and Sunday are in the remaining time interval
+                        businessDays -= 2;
+                    else if (lastDayOfWeek >= 6)// Only Saturday is in the remaining time interval
+                        businessDays -= 1;
+                }
+                else if (firstDayOfWeek <= 7 && lastDayOfWeek >= 7)// Only Sunday is in the remaining time interval
+                    businessDays -= 1;
+            }
+
+            // subtract the weekends during the full weeks in the interval
+            businessDays -= fullWeekCount + fullWeekCount;
+
+            // subtract the number of bank holidays during the time interval
+            foreach (DateTime bankHoliday in PublicHolidayList)
+            {
+                DateTime bh = bankHoliday.Date;
+                if ((FromDate <= bh && bh <= ToDate) && (bh.DayOfWeek != DayOfWeek.Saturday || bh.DayOfWeek != DayOfWeek.Sunday))
+                {
+                    --businessDays;
+                }
+            }
+            return businessDays;
+        }
+
+        /// <summary>
+        /// this method will send the mail to Manager 
+        /// </summary>
+        /// <param name="AssociateName">Associate AssociateID</param>
+        /// <param name="ManagerEmailId">Manager Email ID</param>
+        /// <param name="FromDate">Start date of Vacationcount</param>
+        /// <param name="Todate">End date of Vacationcount</param>
+        /// <returns></returns>
+        public static bool SendNotificationMailToManager(string AssociateName, string ManagerEmailId, DateTime FromDate, DateTime Todate, string vacationTitle, string vacationDescription)
+        {
+            try
+            {
+
+                string sSmptServer = @System.Configuration.ConfigurationManager.AppSettings["SmtpServer"];
+                string fromAddress = System.Configuration.ConfigurationManager.AppSettings["FromAddress"];
+                string subject = System.Configuration.ConfigurationManager.AppSettings["SubjectToManager"];
+                string MessageBody = System.Configuration.ConfigurationManager.AppSettings["BodyToManager"];
+                string ApplicationLink = System.Configuration.ConfigurationManager.AppSettings["VacationTracker_link"];
+                string userName = System.Configuration.ConfigurationManager.AppSettings["UserName"];
+                string Password = System.Configuration.ConfigurationManager.AppSettings["Password"];
+
+
+                MailMessage mail = new MailMessage();
+                SmtpClient SmtpServer = new SmtpClient(sSmptServer);
+                mail.From = new MailAddress(fromAddress);
+                mail.To.Add(ManagerEmailId);
+                mail.Subject = string.Format(subject, AssociateName);
+                mail.Body = string.Format(MessageBody, AssociateName, FromDate, Todate, vacationTitle, vacationDescription, ApplicationLink);
+
+                //create calender request
+                StringBuilder str = new StringBuilder();
+                str.AppendLine("BEGIN:VCALENDAR");
+
+                //PRODID: identifier for the product that created the Calendar object
+                str.AppendLine("PRODID:-//Cerner Corporation");
+                str.AppendLine("VERSION:2.0");
+                str.AppendLine("METHOD:REQUEST");
+
+                str.AppendLine("BEGIN:VEVENT");
+
+                str.AppendLine(string.Format("DTSTART:{0:yyyyMMddTHHmmssZ}", FromDate));//TimeZoneInfo.ConvertTimeToUtc("BeginTime").ToString("yyyyMMddTHHmmssZ")));
+                str.AppendLine(string.Format("DTSTAMP:{0:yyyyMMddTHHmmssZ}", DateTime.UtcNow));
+                str.AppendLine(string.Format("DTEND:{0:yyyyMMddTHHmmssZ}", Todate));//TimeZoneInfo.ConvertTimeToUtc("EndTime").ToString("yyyyMMddTHHmmssZ")));
+                str.AppendLine(string.Format("LOCATION: {0}", "NA"));
+
+                // UID should be unique.
+                str.AppendLine(string.Format("UID:{0}", Guid.NewGuid()));
+                str.AppendLine(string.Format("DESCRIPTION:{0}", mail.Body));
+                str.AppendLine(string.Format("X-ALT-DESC;FMTTYPE=text/html:{0}", mail.Body));
+                str.AppendLine(string.Format("SUMMARY:{0}", mail.Subject));
+
+                str.AppendLine("STATUS:CONFIRMED");
+                str.AppendLine("BEGIN:VALARM");
+                str.AppendLine("TRIGGER:-PT15M");
+                str.AppendLine("ACTION:Accept");
+                str.AppendLine("DESCRIPTION:Reminder");
+                str.AppendLine("X-MICROSOFT-CDO-BUSYSTATUS:BUSY");
+                str.AppendLine("END:VALARM");
+                str.AppendLine("END:VEVENT");
+
+                str.AppendLine(string.Format("ORGANIZER:MAILTO:{0}", mail.From.Address));
+                str.AppendLine(string.Format("ATTENDEE;CN=\"{0}\";RSVP=TRUE:mailto:{1}", mail.To[0].DisplayName, mail.To[0].Address));
+
+                str.AppendLine("END:VCALENDAR");
+                System.Net.Mime.ContentType ct = new System.Net.Mime.ContentType("text/calendar");
+                ct.Parameters.Add("method", "REQUEST");
+                ct.Parameters.Add("name", "meeting.ics");
+                AlternateView av = AlternateView.CreateAlternateViewFromString(str.ToString(), ct);
+                mail.AlternateViews.Add(av);
+
+                SmtpServer.Port = 587;
+                SmtpServer.Credentials = new System.Net.NetworkCredential(userName, Password);
+                SmtpServer.EnableSsl = true;
+
+                SmtpServer.Send(mail);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// this method sends the cancel Email notifiacatio to manager 
+        /// </summary>
+        /// <param name="AssociateName">name of Associate</param>
+        /// <param name="ManagerEmailId">Manager E-mail ID</param>
+        /// <param name="FromDate">Start date of vacation</param>
+        /// <param name="Todate">End date of vacation</param>
+        /// <param name="vacationTitle">Short summary of leave</param>
+        /// <param name="vacationDescription">Description</param>
+        /// <returns>on sucess returns true</returns>
+        public static bool SendCancelNotificationMailToManager(string AssociateName, string ManagerEmailId, DateTime FromDate, DateTime Todate, string vacationTitle, string vacationDescription)
+        {
+            try
+            {
+                string sSmptServer = System.Configuration.ConfigurationManager.AppSettings["SmtpServer"];
+                string fromAddress = System.Configuration.ConfigurationManager.AppSettings["FromAddress"];
+                string subject = System.Configuration.ConfigurationManager.AppSettings["CancelSubjectToManager"];
+                string MessageBody = System.Configuration.ConfigurationManager.AppSettings["CancelBodyToManager"];
+                string userName = System.Configuration.ConfigurationManager.AppSettings["UserName"];
+                string Password = System.Configuration.ConfigurationManager.AppSettings["Password"];
+                string link = System.Configuration.ConfigurationManager.AppSettings["VacationTracker_link"];
+
+                MailMessage mail = new MailMessage();
+                SmtpClient SmtpServer = new SmtpClient(sSmptServer);
+
+                mail.From = new MailAddress(fromAddress);
+                mail.To.Add(ManagerEmailId);
+                mail.Subject = string.Format(subject, AssociateName);
+                mail.Body = string.Format(MessageBody, AssociateName, FromDate, Todate, vacationTitle, vacationDescription, link);
+
+                SmtpServer.Port = 587;
+                SmtpServer.Credentials = new System.Net.NetworkCredential(userName, Password);
+                SmtpServer.EnableSsl = true;
+
+                //SmtpServer.Send(mail);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="AssocaiteEmailID"></param>
+        /// <param name="VacationTitle"></param>
+        /// <param name="IsApproved"></param>
+        /// <returns></returns>
+        public static bool SendNotificationMailToAssociate(string AssocaiteEmailID, DateTime FromDate, DateTime Todate, string VacationTitle, bool IsApproved)
+        {
+            try
+            {
+                string VacationStatus = IsApproved ? "Approved" : "rejected";
+                string sSmptServer = System.Configuration.ConfigurationManager.AppSettings["SmtpServer"];
+                string fromAddress = System.Configuration.ConfigurationManager.AppSettings["FromAddress"];
+                string userName = System.Configuration.ConfigurationManager.AppSettings["UserName"];
+                string Password = System.Configuration.ConfigurationManager.AppSettings["Password"];
+                string ApplicationLink = System.Configuration.ConfigurationManager.AppSettings["VacationTracker_link"];
+                string subject = System.Configuration.ConfigurationManager.AppSettings["SubjectToAssociate"];
+                string MessageBody = System.Configuration.ConfigurationManager.AppSettings["BodyToAssociate"];
+
+                MailMessage mail = new MailMessage();
+                SmtpClient SmtpServer = new SmtpClient(sSmptServer);
+
+                mail.From = new MailAddress(fromAddress);
+                mail.To.Add(AssocaiteEmailID);
+                mail.Subject = subject + VacationTitle + VacationStatus;
+                mail.Body = string.Format(MessageBody, VacationTitle, VacationStatus, ApplicationLink);
+
+                if (IsApproved)
+                {
+                    //create calender request
+                    StringBuilder str = new StringBuilder();
+                    str.AppendLine("BEGIN:VCALENDAR");
+
+                    //PRODID: identifier for the product that created the Calendar object
+                    str.AppendLine("PRODID:-//Cerner Corporation");
+                    str.AppendLine("VERSION:2.0");
+                    str.AppendLine("METHOD:REQUEST");
+
+                    str.AppendLine("BEGIN:VEVENT");
+
+                    str.AppendLine(string.Format("DTSTART:{0:yyyyMMddTHHmmssZ}", FromDate));//TimeZoneInfo.ConvertTimeToUtc("BeginTime").ToString("yyyyMMddTHHmmssZ")));
+                    str.AppendLine(string.Format("DTSTAMP:{0:yyyyMMddTHHmmssZ}", DateTime.UtcNow));
+                    str.AppendLine(string.Format("DTEND:{0:yyyyMMddTHHmmssZ}", Todate));//TimeZoneInfo.ConvertTimeToUtc("EndTime").ToString("yyyyMMddTHHmmssZ")));
+                    str.AppendLine(string.Format("LOCATION: {0}", "NA"));
+
+                    // UID should be unique.
+                    str.AppendLine(string.Format("UID:{0}", Guid.NewGuid()));
+                    str.AppendLine(string.Format("DESCRIPTION:{0}", mail.Body));
+                    str.AppendLine(string.Format("X-ALT-DESC;FMTTYPE=text/html:{0}", mail.Body));
+                    str.AppendLine(string.Format("SUMMARY:{0}", mail.Subject));
+
+                    str.AppendLine("STATUS:CONFIRMED");
+                    str.AppendLine("BEGIN:VALARM");
+                    str.AppendLine("TRIGGER:-PT15M");
+                    str.AppendLine("ACTION:Accept");
+                    str.AppendLine("DESCRIPTION:Reminder");
+                    str.AppendLine("X-MICROSOFT-CDO-BUSYSTATUS:BUSY");
+                    str.AppendLine("END:VALARM");
+                    str.AppendLine("END:VEVENT");
+
+                    str.AppendLine(string.Format("ORGANIZER:MAILTO:{0}", mail.From.Address));
+                    str.AppendLine(string.Format("ATTENDEE;CN=\"{0}\";RSVP=TRUE:mailto:{1}", mail.To[0].DisplayName, mail.To[0].Address));
+
+                    str.AppendLine("END:VCALENDAR");
+                    System.Net.Mime.ContentType ct = new System.Net.Mime.ContentType("text/calendar");
+                    ct.Parameters.Add("method", "REQUEST");
+                    ct.Parameters.Add("name", "meeting.ics");
+                    AlternateView av = AlternateView.CreateAlternateViewFromString(str.ToString(), ct);
+                    mail.AlternateViews.Add(av);
+                }
+
+                SmtpServer.Port = 587;
+                SmtpServer.Credentials = new System.Net.NetworkCredential(userName, Password);
+                SmtpServer.EnableSsl = true;
+
+                SmtpServer.Send(mail);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                return false;
+            }
+        }
+
+        public static bool SendHolidayNotification(List<CHolidays> lstHolidays)
+        {
+
+            string sSmptServer = System.Configuration.ConfigurationManager.AppSettings["SmtpServer"];
+            string fromAddress = System.Configuration.ConfigurationManager.AppSettings["FromAddress"];
+            string userName = System.Configuration.ConfigurationManager.AppSettings["UserName"];
+            string Password = System.Configuration.ConfigurationManager.AppSettings["Password"];
+            string ApplicationLink = System.Configuration.ConfigurationManager.AppSettings["VacationTracker_link"];
+            string subject = System.Configuration.ConfigurationManager.AppSettings["holidaySubject"];
+            string MessageBody = System.Configuration.ConfigurationManager.AppSettings["holdayBody"];
+
+            try
+            {
+                MailMessage mail = new MailMessage();
+                SmtpClient SmtpServer = new SmtpClient(sSmptServer);
+                mail.From = new MailAddress(fromAddress);
+                MailAddressCollection addrlist = GetAddrsList();
+
+                string qurey = "SELECT a.Email_ID as Email_ID FROM vacationtracker.tbl_associate a;";
+                DataTable dt = dbConnection.GenerateDataTable(qurey);
+                foreach (DataRow row in dt.Rows)
+                {
+                    mail.To.Add(new MailAddress(row["Email_ID"].ToString()));
+                }
+
+                mail.Subject = subject;
+                mail.IsBodyHtml = true;
+
+                string holdidayTable = SetEmailBody(lstHolidays);
+                mail.Body = string.Format(MessageBody, ApplicationLink).Replace("&#xA;", "<br>") + holdidayTable;
+
+                SmtpServer.Port = 587;
+                SmtpServer.Credentials = new System.Net.NetworkCredential(userName, Password);
+
+                SmtpServer.EnableSsl = true;
+                SmtpServer.Send(mail);
+                return true;
+            }
+            catch (Exception exe)
+            {
+                return false;
+            }
+
+        }
+
+        private static MailAddressCollection GetAddrsList()
+        {
+            MailAddressCollection addrsList = new MailAddressCollection();
+            string qurey = "SELECT a.Email_ID as Email_ID FROM vacationtracker.tbl_associate a;";
+            DataTable dt = dbConnection.GenerateDataTable(qurey);
+            foreach (DataRow row in dt.Rows)
+            {
+                addrsList.Add(new MailAddress(row["Email_ID"].ToString()));
+            }
+            return addrsList;
+        }
+
+        private static string SetEmailBody(List<CHolidays> lstHolidays)
+        {
+
+            StringBuilder tmp = new StringBuilder();
+
+            //header
+            tmp.Append("<table border=\"1\" cellspacing=\"2\" cellpadding=\"2\" style=\"width:1200; border:0.5px ;solid black;\">");
+            tmp.Append("<tr bgcolor=\"#999999\"> &#xA;");
+            tmp.Append("<td align=center style=\"border:0.5px solid black;\"><div><Font Face='Arial' Size=2>Date</Font></div></td> &#xA;");
+            tmp.Append("<td align=center style=\"border:0.5px solid black;\"><div><Font Face='Arial' Size=2>Vacation</Font></div></td> &#xA;");
+
+            foreach (CHolidays holidy in lstHolidays)
+            {
+                //row
+                tmp.Append("</tr> &#xA;");
+                tmp.Append("<tr> &#xA;");
+                tmp.Append(string.Format("<td align=center style=\"border:0.5px solid black;\"><div id=\"idcol\"><Font Face='Arial' Size=2>{0}</Font></div></td> &#xA;", holidy.startDate));
+                tmp.Append(string.Format("<td align=center style=\"border:0.5px solid black;\"><div id=\"idcol\"><Font Face='Arial' Size=2>{0}</Font></div></td> &#xA;", holidy.Occasion));
+                tmp.Append("</tr> &#xA; &#xA;");
+            }
+
+            return tmp.ToString();
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="AssocateID"></param>
+        /// <param name="Year"></param>
+        /// <returns></returns>
+        public static int GetPTOBlance(string AssocateID, int Year)
+        {
+            ////get the vacation he has taken
+            //string vacationQuery = string.Format("SELECT From_Date,To_Date,Title FROM  v_xl_tbl_vacation a where a.ID ='{0}'and a.Approved_status = 'Y' and cast(a.To_date as datetime) between cast('{1}-01-01 00:00:00'as datetime) and cast('{1}-12-31 00:00:00' as datetime)", AssocateID, Year);
+            //DataTable DataTableVacation = dbConnection.GenerateDataTable(vacationQuery);
+
+            // get the holiday list
+            List<DateTime> listHoliday = GetHolidayList(Year);
+
+            //get the vacation he has taken
+            int VacationCount = GetVacationCount(AssocateID, string.Format("{0}-01-01 00:00:00", Year), string.Format("{0}-12-31 00:00:00", Year), listHoliday);
+
+            // get the allowed vacation in team
+            string teamNameQuery = string.Format("select t.Team_Name, t.Max_Allowed_Vaction from tbl_teams t where t.pkey = (select a.team_ID from tbl_associate a where a.ID = '{0}')", AssocateID);
+            DataTable team = dbConnection.GenerateDataTable(teamNameQuery);
+            int MaxAllowedVacation = 0;
+            foreach (DataRow row in team.Rows)
+            {
+                MaxAllowedVacation = int.Parse(row["Max_Allowed_Vaction"].ToString());
+            }
+
+            // calculate the vacation
+            // pto = allowed vacation - taken vacation
+
+            return MaxAllowedVacation - VacationCount;
+
+
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="AssociateID"></param>
+        /// <param name="startDate"></param>
+        /// <param name="endDate"></param>
+        /// <param name="listHoliday"></param>
+        /// <returns></returns>
+        public static int GetVacationCount(string AssociateID, string startDate, string endDate, List<DateTime> listHoliday)
+        {
+            string vacationQuery = string.Format("SELECT From_Date,To_Date,Title FROM  v_xl_tbl_vacation a where a.ID ='{0}'and a.Approved_status = 'Y' and cast(a.To_date as datetime) between cast('{1}'as datetime) and cast('{2}' as datetime)", AssociateID, startDate, endDate);
+            DataTable DataTableVacation = dbConnection.GenerateDataTable(vacationQuery);
+            int VacationCount = 0;
+            //TimeSpan offset = TimeZone.CurrentTimeZone.GetUtcOffset(new DateTime());
+            foreach (DataRow row in DataTableVacation.Rows)
+            {
+                //DateTime dtstartDate = DateTime.Parse(row["From_Date"].ToString()).Subtract(offset);
+                //DateTime dtendDate = DateTime.Parse(row["To_date"].ToString()).Subtract(offset).AddSeconds(-1);
+                DateTime dtstartDate = DateTime.Parse(row["From_Date"].ToString());
+                DateTime dtendDate = DateTime.Parse(row["To_date"].ToString()).AddSeconds(-1);
+                VacationCount += CalculateVacation(dtstartDate, dtendDate, listHoliday);
+
+
+                //VacationCount += CalculateVacation(DateTime.Parse(row["From_Date"].ToString()), DateTime.Parse(row["To_date"].ToString()), listHoliday);
+            }
+            return VacationCount;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="Year"></param>
+        /// <returns></returns>
+        public static List<DateTime> GetHolidayList(int Year)
+        {
+            List<DateTime> listHoliday = new List<DateTime>();
+            string HolidayQuery = string.Format("select cast(h.date as datetime) as Date from  tbl_holidays h where  cast(h.date as datetime) between cast('{0}-01-01 00:00:00'as datetime) and cast('{0}-12-31 00:00:00' as datetime)", Year);
+            DataTable dtHoliday = dbConnection.GenerateDataTable(HolidayQuery);
+            foreach (DataRow row in dtHoliday.Rows)
+            {
+                listHoliday.Add(DateTime.Parse(row["Date"].ToString()));
+            }
+            return listHoliday;
+        }
+
+        /// <summary>
+        /// this method checks the confilts between the given time span and leave already applied by
+        /// associate
+        /// </summary>
+        /// <param name="AssociateID">Associate ID</param>
+        /// <param name="startDate">Start date of time Sapan</param>
+        /// <param name="EndDate">End date of time Sapn</param>
+        /// <returns>on Confilts returns true</returns>
+        public static bool IsDuplicateVacation(string AssociateID, DateTime startDate, DateTime EndDate)
+        {
+            List<DateTime[]> vacationlist = GetVacationList(AssociateID);
+
+            foreach (DateTime[] vacation in vacationlist)
+            {
+                if (vacation[0] < EndDate && startDate < vacation[1])
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// gets the list of vaction taken by the associates
+        /// </summary>
+        /// <param name="AssociateID"></param>
+        /// <returns></returns>
+        private static List<DateTime[]> GetVacationList(string AssociateID)
+        {
+            DataTable dt = dbConnection.GenerateDataTable(string.Format("select From_Date , To_Date from v_xl_tbl_vacation where ID = '{0}'", AssociateID));
+            List<DateTime[]> vacationlist = new List<DateTime[]>();
+
+            foreach (DataRow row in dt.Rows)
+            {
+                DateTime[] vacation = new DateTime[2];
+                vacation[0] = Convert.ToDateTime(row["From_Date"].ToString());
+                vacation[1] = Convert.ToDateTime(row["To_Date"].ToString());
+                vacationlist.Add(vacation);
+            }
+            return vacationlist;
+        }
+
+        public static void CreateMessageAlert(System.Web.UI.Page senderPage, string alertMsg)
+        {
+            string strScript = "<script language=JavaScript>alert('" +
+                alertMsg + "')</script>";
+            senderPage.RegisterStartupScript("AlertMsg", strScript);
+        }
+
+    }
+}
