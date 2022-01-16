@@ -7,6 +7,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// Create Employee
 func CreateEmployee(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	var emp Employee
@@ -15,7 +16,7 @@ func CreateEmployee(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(emp)
 }
 
-// marshling and unmarshling
+// Get Employee
 func GetEmployees(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	var employees []Employee
@@ -23,6 +24,7 @@ func GetEmployees(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(employees)
 }
 
+// GetEmployee By ID
 func GetEmployeeById(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	var employee Employee
@@ -30,6 +32,7 @@ func GetEmployeeById(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(employee)
 }
 
+// Update Employee by ID
 func UpdateEmployee(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	var employee Employee
@@ -39,6 +42,7 @@ func UpdateEmployee(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(employee)
 }
 
+// Delete Employee by ID
 func DeleteEmployee(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	var emp Employee
