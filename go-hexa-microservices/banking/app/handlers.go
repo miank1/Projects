@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
-	"log"
 	"net/http"
 )
 
@@ -12,12 +11,6 @@ type Customer struct {
 	Name    string `json:"full_name" xml:"name"`
 	City    string `json:"city" xml:"city"`
 	ZipCode string `json:"zip_code" xml:"zipcode"`
-}
-
-func main() {
-	http.HandleFunc("/greet", greet)
-	http.HandleFunc("/customers", getAllCustomers)
-	log.Fatal(http.ListenAndServe("localhost:8001", nil))
 }
 
 func greet(w http.ResponseWriter, r *http.Request) {
