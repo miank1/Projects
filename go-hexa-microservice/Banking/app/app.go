@@ -3,15 +3,18 @@ package app
 import (
 	"log"
 	"net/http"
+
+	"github.com/gorilla/mux"
 )
 
 func Start() {
-	mux := http.NewServeMux()
+
+	router := mux.NewRouter()
 
 	// Routes
-	mux.HandleFunc("/greet", greet)
-	mux.HandleFunc("/customers", getAllCustomers)
+	router.HandleFunc("/greet", greet)
+	router.HandleFunc("/customers", getAllCustomers)
 
 	// Server Start
-	log.Fatal(http.ListenAndServe("localhost:8001", nil))
+	log.Fatal(http.ListenAndServe("localhost:8000", router))
 }
