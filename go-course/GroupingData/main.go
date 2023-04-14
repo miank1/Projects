@@ -83,4 +83,11 @@ func main() {
 		}
 	}
 
+	delete(m1, `HelloWorld`)
+	for k, v := range m1 {
+		fmt.Println("This is the record for ", k)
+		for i, v2 := range v {
+			fmt.Println("\t", i, v2)
+		}
+	}
 }
