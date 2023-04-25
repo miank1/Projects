@@ -22,8 +22,12 @@ func newDeck() deck {
 
 // Any variable of type deck gets access to the "print" method
 
-func (d deck) print() {
+func (d deck)  print() {
 	for i, card := range d {
 		fmt.Println(i, card)
 	}
+}
+
+func deal(d deck, handSize int) (deck, deck) {
+	return d[:handSize], d[handSize:]
 }
