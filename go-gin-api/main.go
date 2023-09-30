@@ -23,7 +23,7 @@ func getAlbums(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, albums)
 }
 
-func getAlbumByID(c *gin.Context) {
+func getAlbumByID(c *gin.Context) { // Read more on context.
 	id := c.Param("id")
 
 	for _, a := range albums {
