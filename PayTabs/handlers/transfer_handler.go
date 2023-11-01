@@ -3,6 +3,8 @@ package handlers
 import (
 	"accounts/models"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 )
 
@@ -13,10 +15,15 @@ func TransferHandler(w http.ResponseWriter, r *http.Request) {
 		Amount float64 `json:"amount"`
 	}
 
-	err := json.NewDecoder(r.Body).Decode(&transferRequest)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "Error parsing request", http.StatusBadRequest)
-		return
+		fmt.Println("Unable to unmarshal data")
+	}
+
+	// Unmarshal the JSON data into the struct
+	err = json.Unmarshal(body, &transferRequest)
+	if err != nil {
+		fmt.Println("Unable to unmarshal data 1")
 	}
 
 	accountsMutex.Lock()
