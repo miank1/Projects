@@ -4,6 +4,7 @@ import (
 	"accounts/handlers"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -14,7 +15,7 @@ func TestTransferHandler(t *testing.T) {
 	transferData := map[string]interface{}{
 		"from":   "fd796d75-1bcf-4a95-bf1a-f7b296adb79f",
 		"to":     "ccd1e5cc-c798-4407-883f-f2c62e0d7106",
-		"amount": 500.0,
+		"amount": 50.0,
 	}
 	reqBody, _ := json.Marshal(transferData)
 	req, err := http.NewRequest("POST", "/transfer", bytes.NewBuffer(reqBody))
@@ -30,9 +31,10 @@ func TestTransferHandler(t *testing.T) {
 
 	// Check the response status code
 	if rr.Code == http.StatusOK {
+		fmt.Printf("Amount successfully transferred")
+	} else {
 		t.Errorf("Expected status code %d, got %d", http.StatusOK, rr.Code)
 	}
-
 }
 
 func TestTransferHandler_1(t *testing.T) {
@@ -55,7 +57,9 @@ func TestTransferHandler_1(t *testing.T) {
 	handlers.TransferHandler(rr, req)
 
 	// Check the response status code
-	if rr.Code != http.StatusBadRequest {
+	if rr.Code == http.StatusBadRequest {
+		fmt.Printf("Transferring more than the account balance ")
+	} else {
 		t.Errorf("Expected status code %d, got %d", http.StatusOK, rr.Code)
 	}
 
