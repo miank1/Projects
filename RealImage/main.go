@@ -20,7 +20,7 @@ type Distributor struct {
 }
 
 // LoadDistributors loads distributor permissions from a CSV file
-func LoadDistributors(filename string) ([]Distributor, error) {
+func Load(filename string) ([]Distributor, error) {
 	var distributors []Distributor
 
 	file, err := os.Open(filename)
@@ -57,7 +57,7 @@ func LoadDistributors(filename string) ([]Distributor, error) {
 }
 
 // HasPermission checks if a distributor has permission to distribute in a given region
-func HasPermission(distributor Distributor, region string) bool {
+func CheckPermission(distributor Distributor, region string) bool {
 	for _, excl := range distributor.Permissions.Exclude {
 		if strings.HasPrefix(region, excl) {
 			return false
@@ -74,7 +74,7 @@ func HasPermission(distributor Distributor, region string) bool {
 }
 
 func main() {
-	distributors, err := LoadDistributors("cities.csv")
+	distributors, err := Load("cities.csv")
 	if err != nil {
 		fmt.Println("Error loading distributors:", err)
 		return
@@ -82,11 +82,11 @@ func main() {
 
 	for _, distributor := range distributors {
 		fmt.Printf("Checking permissions for %s:\n", distributor.Name)
-		fmt.Printf("  Can distribute in CHICAGO-ILLINOIS-UNITEDSTATES: %t\n", HasPermission(distributor, "CHICAGO-ILLINOIS-UNITEDSTATES"))
-		fmt.Printf("  Can distribute in CHENNAI-TAMILNADU-INDIA: %t\n", HasPermission(distributor, "CHENNAI-TAMILNADU-INDIA"))
-		fmt.Printf("  Can distribute in BANGALORE-KARNATAKA-INDIA: %t\n", HasPermission(distributor, "BANGALORE-KARNATAKA-INDIA"))
-		fmt.Printf("  Can distribute in KANPUR-UTTAR PRADESH-INDIA: %t\n", HasPermission(distributor, "KANPUR-UTTAR PRADESH-INDIA"))
-		fmt.Printf("  Can distribute in AUSTIN-TEXAS-UNITEDSTATES: %t\n", HasPermission(distributor, "AUSTIN-TEXAS-UNITEDSTATES"))
+		fmt.Printf("  Can distribute in CHICAGO-ILLINOIS-UNITEDSTATES: %t\n", CheckPermission(distributor, "CHICAGO-ILLINOIS-UNITEDSTATES"))
+		fmt.Printf("  Can distribute in CHENNAI-TAMILNADU-INDIA: %t\n", CheckPermission(distributor, "CHENNAI-TAMILNADU-INDIA"))
+		fmt.Printf("  Can distribute in BANGALORE-KARNATAKA-INDIA: %t\n", CheckPermission(distributor, "BANGALORE-KARNATAKA-INDIA"))
+		fmt.Printf("  Can distribute in KANPUR-UTTAR PRADESH-INDIA: %t\n", CheckPermission(distributor, "KANPUR-UTTAR PRADESH-INDIA"))
+		fmt.Printf("  Can distribute in AUSTIN-TEXAS-UNITEDSTATES: %t\n", CheckPermission(distributor, "AUSTIN-TEXAS-UNITEDSTATES"))
 		fmt.Println()
 	}
 }
