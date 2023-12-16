@@ -85,7 +85,7 @@ func main() {
 		fmt.Printf("  Can distribute in CHICAGO-ILLINOIS-UNITEDSTATES: %t\n", CheckPermission(distributor, "CHICAGO-ILLINOIS-UNITEDSTATES"))
 		fmt.Printf("  Can distribute in CHENNAI-TAMILNADU-INDIA: %t\n", CheckPermission(distributor, "CHENNAI-TAMILNADU-INDIA"))
 		fmt.Printf("  Can distribute in BANGALORE-KARNATAKA-INDIA: %t\n", CheckPermission(distributor, "BANGALORE-KARNATAKA-INDIA"))
-		fmt.Printf("  Can distribute in KANPUR-UTTAR PRADESH-INDIA: %t\n", CheckPermission(distributor, "KANPUR-UTTAR PRADESH-INDIA"))
+		fmt.Printf("  Can distribute in KANPUR-UTTAR PRADESH-INDIA: %t\n", CheckPermission(distributor, "KANPUR-Uttar Pradesh-INDIA"))
 		fmt.Printf("  Can distribute in AUSTIN-TEXAS-UNITEDSTATES: %t\n", CheckPermission(distributor, "AUSTIN-TEXAS-UNITEDSTATES"))
 		fmt.Println()
 	}
