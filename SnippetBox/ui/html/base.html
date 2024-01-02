@@ -1,0 +1,51 @@
+{{- define "base" -}}
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>{{ template "page-title" . }} - Snippetbox</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/css/main.css">
+  <link rel="shortcut icon" href="/static/img/favicon.ico">
+</head>
+
+<body>
+  <header>
+    <h1><a href="/">Snippetbox</a></h1>
+  </header>
+
+  <nav>
+    <a href="/" {{if eq .Path "/"}} class="live" {{end}}>
+      Home
+    </a>
+
+    {{if .LoggedIn}}
+    <a href="/snippet/new" {{if eq .Path "/snippet/new"}} class="live" {{end}}>
+      New snippet
+    </a>
+    <form action="/user/logout" method="POST">
+      <!-- Add a hidden input containing the CSRF token -->
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <button>Logout</button>
+    </form>
+
+    {{else}}
+    <a href="/user/login" {{if eq .Path "/user/login"}} class="live" {{end}}>
+      Login
+    </a>
+    <a href="/user/signup" {{if eq .Path "/user/signup"}} class="live" {{end}}>
+      Signup
+    </a>
+    {{end}}
+
+  </nav>
+
+  <section>
+    {{- template "page-body" . -}}
+  </section>
+</body>
+
+</html>
+{{- end -}}
