@@ -11,7 +11,7 @@ func home(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	t, err := template.ParseFiles("./ui/html/homepage.html")
+	ts, err := template.ParseFiles("./ui/html/homepage.html")
 	if err != nil {
 		log.Println(err.Error())
 		http.Error(w, "Internal Server Error", 500)
