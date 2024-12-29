@@ -21,6 +21,7 @@ func main() {
 	cart.AddProduct("cornflakes", 1)
 	cart.AddProduct("weetabix", 1)
 	cart.AddProduct("weetabix", 1)
+	cart.AddProduct("Cadbury", 1)
 
 	cart.DisplayCart()
 
