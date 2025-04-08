@@ -14,6 +14,7 @@ func main() {
 
 	// Generate a random number b/w 1 and 100
 	randomNumber := rand.Intn(100) + 1
+	fmt.Println("Random no is ", randomNumber)
 	fmt.Println("The computer has selected a number b/w 1 and 100 ")
 
 	fmt.Println("You have 5 chances to guess the correct number.")
@@ -32,15 +33,19 @@ func main() {
 	}
 	if ch == 1 {
 		fmt.Println("Great! You have selected the Easy difficulty level.")
+		chances = 10
 	} else if ch == 2 {
 		fmt.Println("Great! You have selected the Medium difficulty level.")
+		chances = 5
 	} else {
 		fmt.Println("Great! You have selected the Hard difficulty level.")
+		chances = 3
 	}
 
 	fmt.Println("Let's start the game!")
 
 	var guessNo int
+
 	for chances > 0 {
 		fmt.Println("Enter your guess:")
 		_, err := fmt.Scanln(&guessNo)
@@ -49,9 +54,15 @@ func main() {
 			return
 		}
 
-		if guessNo < 50 {
-
+		if guessNo == randomNumber {
+			fmt.Printf("Congratulations! You guessed the correct number in %d attempts. \n", chances)
+			return
+		} else if guessNo < randomNumber {
+			fmt.Printf("Incorrect! The number is greater than %d. \n", guessNo)
+		} else {
+			fmt.Printf("Incorrect! The number is less than %d. \n", guessNo)
 		}
+		chances--
 
 	}
 }
