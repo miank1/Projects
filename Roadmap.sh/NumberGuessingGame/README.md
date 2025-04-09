@@ -21,7 +21,7 @@ Projects/
 
 ## 🔗 Project URL
 
-[Number Guessing Game on GitHub](https://github.com/miank/Projects/tree/master/Roadmap.sh/NumberGuessingGame)
+[Number Guessing Game on GitHub](https://roadmap.sh/projects/number-guessing-game)
 
 ---
 
