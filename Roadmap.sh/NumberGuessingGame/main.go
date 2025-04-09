@@ -10,11 +10,10 @@ func main() {
 
 	fmt.Println("Welcome to the Number Guessing Game!")
 	fmt.Println("I'm thinking of a number between 1 and 100.")
-	rand.Seed(time.Now().UnixNano())
+	time.Now().UnixNano()
 
 	// Generate a random number b/w 1 and 100
 	randomNumber := rand.Intn(100) + 1
-	fmt.Println("Random no is ", randomNumber)
 	fmt.Println("The computer has selected a number b/w 1 and 100 ")
 
 	fmt.Println("You have 5 chances to guess the correct number.")
@@ -44,7 +43,7 @@ func main() {
 
 	fmt.Println("Let's start the game!")
 
-	var guessNo int
+	var guessNo, attemptUsed int
 
 	for chances > 0 {
 		fmt.Println("Enter your guess:")
@@ -54,15 +53,21 @@ func main() {
 			return
 		}
 
+		attemptUsed++
+
 		if guessNo == randomNumber {
 			fmt.Printf("Congratulations! You guessed the correct number in %d attempts. \n", chances)
-			return
+			break
 		} else if guessNo < randomNumber {
 			fmt.Printf("Incorrect! The number is greater than %d. \n", guessNo)
 		} else {
 			fmt.Printf("Incorrect! The number is less than %d. \n", guessNo)
 		}
 		chances--
-
 	}
+
+	if guessNo != randomNumber {
+		fmt.Printf("😢 You've used all attempts. The correct number was %d.\n", randomNumber)
+	}
+
 }
