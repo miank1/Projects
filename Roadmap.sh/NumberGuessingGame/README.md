@@ -21,7 +21,9 @@ Projects/
 
 ## 🔗 Project URL
 
-[![GitHub](https://img.shields.io/badge/View%20on-GitHub-24292e?logo=github)](https://github.com/miank/Projects/tree/master/Roadmap.sh/NumberGuessingGame)
+
+[Number Guessing Game on GitHub](https://github.com/miank/Projects/tree/master/Roadmap.sh/NumberGuessingGame)
+
 
 
 ---
