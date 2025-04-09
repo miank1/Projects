@@ -1,6 +1,7 @@
 Sure! Here's a clean and beginner-friendly `README.md` you can add to your `NumberGuessingGame` folder or root of the repo:
 
 ---
+Sample solution for the number-guessing-game challenge from roadmap.sh.
 
 ## 🎮 Number Guessing Game (Golang)
 
@@ -8,6 +9,12 @@ Welcome to the **Number Guessing Game**, a fun command-line game built with Go (
 The computer randomly selects a number between 1 and 100, and your task is to guess it within a limited number of chances based on the difficulty level you choose.
 
 ---
+
+## Clone the repo
+
+git clone Roadmap.sh/NumberGuessingGame
+
+
 
 ### 📁 Project Structure
 
