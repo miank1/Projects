@@ -19,6 +19,10 @@ Projects/
         └── README.md ← (you are here)
 ```
 
+## 🔗 Project URL
+
+[Number Guessing Game on GitHub](https://github.com/miank/Projects/tree/master/Roadmap.sh/NumberGuessingGame)
+
 ---
 
 ### 🚀 How to Run
