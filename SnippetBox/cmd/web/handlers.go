@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"text/template"
 )
 
 func snippetView(w http.ResponseWriter, r *http.Request) {
@@ -35,18 +36,23 @@ func home(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+
+	files := []string{
+		"./ui/html/base.html",
+		"./ui/html/pages/home.html",
+		"./ui/html/partials/nav.html",
+	}
+
+	ts, err := template.ParseFiles(files...)
+	if err != nil {
+		log.Print(err.Error())
+		http.Error(w, "Internal Server error", 500)
+		return
+	}
+	err = ts.Execute(w, nil)
+	if err != nil {
+		log.Print(err.Error())
+		http.Error(w, "Internal Server Error", 500)
+	}
 	w.Write([]byte("Hello from SnippetBox"))
-}
-
-func main() {
-	fmt.Println("Hello World !!!")
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", home)
-
-	mux.HandleFunc("/snippet/view", snippetView)
-	mux.HandleFunc("/snippet/create", snippetCreate)
-	log.Print("Starting server on :4000")
-	err := http.ListenAndServe(":4000", mux)
-	log.Fatal(err)
 }
