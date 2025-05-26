@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"greenlight/internal/data"
 	"net/http"
@@ -8,8 +9,20 @@ import (
 )
 
 func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Title   string   `json:"title,omitempty"`
+		Year    int32    `json:"year"`
+		Runtime int32    `json:"runtime,omitempty"`
+		Genres  []string `json:"genres,omitempty"`
+	}
 
-	fmt.Fprintln(w, "from new movie")
+	err := json.NewDecoder(r.Body).Decode(&input)
+	if err != nil {
+		app.errorResponse(w, r, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	fmt.Fprintf(w, "%+v\n", input)
 }
 
 func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request) {
