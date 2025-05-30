@@ -21,8 +21,24 @@ func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Reques
 		app.badRequestResponse(w, r, err)
 		return
 	}
-	// Initialize a new Validator instance.
+
+	movie := &data.Movie{
+		Title:   input.Title,
+		Year:    input.Year,
+		Runtime: input.Runtime,
+		Genres:  input.Genres,
+	}
+	// Initialize a new Validator instance. ??
 	v := validator.New()
+
+	// Use the Valid() method to see if any of the checks failed. If they did, then use
+	// the failedValidationResponse() helper to send a response to the client, passing
+	// in the v.Errors map.
+
+	if data.ValidateMovie(v, movie); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
 
 	// Use the Check() method to execute our validation checks. This will add the
 	// provided key and error message to the errors map if the check does not evaluate
@@ -46,13 +62,6 @@ func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Reques
 	// values in the input.Genres slice are unique.
 	v.Check(validator.Unique(input.Genres), "genres", "must not contain duplicate values")
 
-	// Use the Valid() method to see if any of the checks failed. If they did, then use
-	// the failedValidationResponse() helper to send a response to the client, passing
-	// in the v.Errors map.
-	if !v.Valid() {
-		app.failedValidationResponse(w, r, v.Errors)
-		return
-	}
 	fmt.Fprintf(w, "%+v\n", input)
 }
 
