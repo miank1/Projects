@@ -69,7 +69,7 @@ func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request)
 		CreatedAt: time.Now(),
 		Title:     "Casablannca",
 		Runtime:   102,
-		Generes:   []string{"drama", "romance", "war"},
+		Genres:    []string{"drama", "romance", "war"},
 		Version:   1,
 	}
 
