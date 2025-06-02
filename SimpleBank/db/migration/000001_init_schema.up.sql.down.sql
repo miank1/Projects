@@ -1,3 +1,0 @@
-DROP TABLE IF EXIST entries;
-DROP TABLE IF EXIST trabnsfers;
-DROP TABLE IF EXIST account;
