@@ -1,6 +1,7 @@
 package main
 
 import (
+	"distributed-rate-limiter/internal/api"
 	"fmt"
 	"sync"
 	"time"
@@ -44,25 +45,7 @@ func (rl *RateLimiter) Allow(user string) bool {
 }
 
 func main() {
-	rl := NewRateLimiter(10, 5*time.Second) // only six request with in 8 sec- once 8sec gets over then new 6 request.
+	fmt.Println("Distributed Rate Limiter Service Starting...")
 
-	user := "alice"
-
-	for i := 1; i <= 10; i++ {
-		if rl.Allow(user) {
-			fmt.Printf("Request %d: allowed\n", i)
-		} else {
-			fmt.Printf("Request %d: blocked\n", i)
-		}
-	}
-	fmt.Println("---- Sleeping 6 seconds to reset window ----")
-	time.Sleep(6 * time.Second)
-
-	for i := 11; i <= 15; i++ {
-		if rl.Allow(user) {
-			fmt.Printf("Request %d: allowed\n", i)
-		} else {
-			fmt.Printf("Request %d: blocked\n", i)
-		}
-	}
+	api.StartServer()
 }
