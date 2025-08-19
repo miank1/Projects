@@ -2,25 +2,29 @@ package store
 
 import "sync"
 
+type Entry struct {
+	Count  int
+	Expiry int64
+}
+
 type MemoryStore struct {
-	mu    sync.Mutex
-	count map[string]int
+	data map[string]Entry
+	mu   sync.RWMutex
 }
 
 func NewMemoryStore() *MemoryStore {
-	return &MemoryStore{count: make(map[string]int)}
+	return &MemoryStore{data: make(map[string]Entry)}
 }
 
-func (ms *MemoryStore) Increment(key string) (int, error) {
-	ms.mu.Lock()
-	defer ms.mu.Unlock()
-	ms.count[key]++
-	return ms.count[key], nil
+func (s *MemoryStore) Get(key string) (Entry, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	val, ok := s.data[key]
+	return val, ok
 }
 
-func (ms *MemoryStore) Reset(key string) error {
-	ms.mu.Lock()
-	defer ms.mu.Unlock()
-	ms.count[key] = 0
-	return nil
+func (s *MemoryStore) Set(key string, val Entry) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.data[key] = val
 }
