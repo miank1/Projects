@@ -1,3 +1,3 @@
-module distributed-rate-limiter-service
+module distributed-rate-limiter
 
 go 1.24.6
