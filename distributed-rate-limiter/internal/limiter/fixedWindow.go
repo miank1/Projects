@@ -2,49 +2,49 @@ package limiter
 
 import (
 	"distributed-rate-limiter/internal/store"
-	"sync"
 	"time"
 )
 
 type FixedWindow struct {
-	store  *store.MemoryStore
+	store  store.Store
 	limit  int
 	window time.Duration
-	mu     sync.Mutex
 }
 
-func NewFixedWindow(s *store.MemoryStore, limit int, window time.Duration) *FixedWindow {
+func NewFixedWindow(store store.Store, limit int, window time.Duration) *FixedWindow {
 	return &FixedWindow{
-		store:  s,
+		store:  store,
 		limit:  limit,
 		window: window,
 	}
 }
 
-func (fw *FixedWindow) Allow(user string) bool {
-	fw.mu.Lock()
-	defer fw.mu.Unlock()
-
+func (fw *FixedWindow) Allow(key string) (bool, error) {
 	now := time.Now().Unix()
+	windowStart := now - int64(fw.window.Seconds())
 
-	// check if record exists
-	entry, exists := fw.store.Get(user)
-	if !exists || now > entry.Expiry {
-		// new window → reset counter
-		fw.store.Set(user, store.Entry{
+	// Check if record exists
+	entry, err := fw.store.Get(key)
+	if err == store.ErrKeyNotFound || entry.Expiry <= windowStart {
+		// New window → reset counter
+		err = fw.store.Set(key, store.Entry{
 			Count:  1,
 			Expiry: now + int64(fw.window.Seconds()),
 		})
-		return true
+		return err == nil, err
 	}
 
-	// same window → check count
+	if err != nil {
+		return false, err
+	}
+
+	// Same window → check count
 	if entry.Count < fw.limit {
 		entry.Count++
-		fw.store.Set(user, entry)
-		return true
+		err = fw.store.Set(key, entry)
+		return err == nil, err
 	}
 
-	// limit exceeded
-	return false
+	// Limit exceeded
+	return false, nil
 }
