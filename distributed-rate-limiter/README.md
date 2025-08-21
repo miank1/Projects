@@ -36,6 +36,20 @@ Run all tests:
 go test ./... -v
 ```
 
+// Acquire API
+curl -X POST http://localhost:8080/acquire \
+     -H "X-Client-ID: test123" \
+     -d '{"data":"example"}'
+
+// Status API
+
+
+
+
+
+docker build -t distributed-rate-limiter .
+
+docker run -p 8080:8080 --env REDIS_ADDR=host.docker.internal:6379 distributed-rate-limiter
 
 
 Here’s a simple flow of your distributed rate limiter project:

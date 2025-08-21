@@ -75,6 +75,56 @@ func main() {
 		json.NewEncoder(w).Encode(resp)
 	})
 
+	http.HandleFunc("/acquire", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		clientID := r.Header.Get("X-Client-ID")
+		if clientID == "" {
+			http.Error(w, "Missing X-Client-ID header", http.StatusBadRequest)
+			return
+		}
+		allowed, err := rateLimiter.IsAllowed(clientID)
+		if err != nil {
+			log.Println("Error is ", err)
+		}
+		resp := map[string]interface{}{
+			"allowed": allowed,
+			"message": "Request processed",
+		}
+		if !allowed {
+			w.WriteHeader(http.StatusTooManyRequests)
+			resp["message"] = "Rate limit exceeded"
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	})
+
+	http.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		clientID := r.URL.Query().Get("key")
+		if clientID == "" {
+			http.Error(w, "Missing key parameter", http.StatusBadRequest)
+			return
+		}
+		entry, err := rateStore.Get(clientID)
+		if err != nil {
+			http.Error(w, "Key not found", http.StatusNotFound)
+			return
+		}
+		resp := map[string]interface{}{
+			"tokens_left": entry.Count,
+			"expiry":      entry.Expiry,
+			"refill_rate": cfg.RateLimit,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	})
+
 	// Start server
 	go func() {
 		log.Printf("Server starting on %s", srv.Addr)

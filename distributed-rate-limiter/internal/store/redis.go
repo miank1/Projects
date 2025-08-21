@@ -85,7 +85,8 @@ func (rs *RedisStore) Set(key string, entry *Entry) error {
 	if err != nil {
 		return errors.New("failed to marshal entry: " + err.Error())
 	}
-
+	// Set expiry to 60 seconds from now (for example)
+	entry.Expiry = time.Now().Add(60 * time.Second).Unix()
 	expiration := time.Until(time.Unix(entry.Expiry, 0))
 	if expiration <= 0 {
 		return errors.New("invalid expiration time")
