@@ -1,51 +1,98 @@
 package main
 
 import (
-	"distributed-rate-limiter/internal/api"
-	"fmt"
-	"sync"
+	"context"
+	"encoding/json"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
+
+	"distributed-rate-limiter/internal/config"
+	"distributed-rate-limiter/internal/limiter"
+	"distributed-rate-limiter/internal/store"
 )
 
-// RateLimiter stores user request counters
-type RateLimiter struct {
-	mu        sync.Mutex
-	limit     int           // max requests
-	window    time.Duration // time window
-	userCount map[string]int
-	resetTime map[string]time.Time
-}
-
-// NewRateLimiter creates a new limiter
-func NewRateLimiter(limit int, window time.Duration) *RateLimiter {
-	return &RateLimiter{
-		limit:     limit, // 5 request in 10 seconds
-		window:    window,
-		userCount: make(map[string]int),
-		resetTime: make(map[string]time.Time),
-	}
-}
-
-// Allow checks if user request is allowed
-func (rl *RateLimiter) Allow(user string) bool {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
-
-	// reset window if expired - user time has exceeded check
-	if time.Now().After(rl.resetTime[user]) {
-		rl.userCount[user] = 0
-		rl.resetTime[user] = time.Now().Add(rl.window)
-	}
-
-	if rl.userCount[user] < rl.limit {
-		rl.userCount[user]++
-		return true
-	}
-	return false
+type Response struct {
+	Allowed bool   `json:"allowed"`
+	Message string `json:"message"`
 }
 
 func main() {
-	fmt.Println("Distributed Rate Limiter Service Starting...")
+	cfg := config.DefaultConfig()
 
-	api.StartServer()
+	// Initialize Redis store
+	redisConfig := store.RedisConfig{
+		Addr:    cfg.RedisAddr,
+		Timeout: 5 * time.Second,
+	}
+
+	rateStore, err := store.NewRedisStore(redisConfig)
+	if err != nil {
+		log.Printf("Failed to connect to Redis: %v, falling back to memory store", err)
+		//rateStore = store.NewMemoryStore()
+	}
+	defer rateStore.Close()
+
+	// Create rate limiter
+	rateLimiter := limiter.NewTokenBucket(rateStore, cfg.RateLimit, cfg.WindowSize)
+
+	// Create server
+	srv := &http.Server{
+		Addr:         ":8080",
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+	}
+
+	// Configure routes
+	http.HandleFunc("/ratelimit", func(w http.ResponseWriter, r *http.Request) {
+		clientID := r.Header.Get("X-Client-ID")
+		if clientID == "" {
+			http.Error(w, "Missing X-Client-ID header", http.StatusBadRequest)
+			return
+		}
+
+		allowed, err := rateLimiter.IsAllowed(clientID)
+		if err != nil {
+			log.Printf("Rate limiter error: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		resp := Response{
+			Allowed: allowed,
+			Message: "Request processed",
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if !allowed {
+			w.WriteHeader(http.StatusTooManyRequests)
+			resp.Message = "Rate limit exceeded"
+		}
+
+		json.NewEncoder(w).Encode(resp)
+	})
+
+	// Start server
+	go func() {
+		log.Printf("Server starting on %s", srv.Addr)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Server failed: %v", err)
+		}
+	}()
+
+	// Graceful shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	log.Println("Shutting down server...")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("Server shutdown failed: %v", err)
+	}
 }

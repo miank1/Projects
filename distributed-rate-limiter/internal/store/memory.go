@@ -5,50 +5,40 @@ import (
 	"time"
 )
 
-type Entry struct {
-	Count  int
-	Expiry int64
-}
-
 type MemoryStore struct {
 	mu    sync.RWMutex
-	items map[string]Entry
-	ttl   time.Duration
+	items map[string]*Entry
 }
 
-func NewMemoryStore(opts ...StoreOption) *MemoryStore {
-	ms := &MemoryStore{
-		items: make(map[string]Entry),
-		ttl:   time.Hour, // default TTL
+func NewMemoryStore() *MemoryStore {
+	return &MemoryStore{
+		items: make(map[string]*Entry),
 	}
-
-	for _, opt := range opts {
-		opt(ms)
-	}
-
-	return ms
 }
 
-func (ms *MemoryStore) Get(key string) (Entry, error) {
+// Get retrieves an entry from memory store
+func (ms *MemoryStore) Get(key string) (*Entry, error) {
 	ms.mu.RLock()
 	defer ms.mu.RUnlock()
 
 	entry, exists := ms.items[key]
 	if !exists {
-		return Entry{}, ErrKeyNotFound
+		return nil, ErrKeyNotFound
 	}
 
-	if !entry.IsValid() {
+	// Check if entry has expired
+	if time.Now().Unix() > entry.Expiry {
 		delete(ms.items, key)
-		return Entry{}, ErrKeyNotFound
+		return nil, ErrKeyNotFound
 	}
 
 	return entry, nil
 }
 
-func (ms *MemoryStore) Set(key string, entry Entry) error {
-	if !entry.IsValid() {
-		return ErrInvalidEntry
+// Set stores an entry in memory store
+func (ms *MemoryStore) Set(key string, entry *Entry) error {
+	if entry == nil {
+		return ErrNilEntry
 	}
 
 	ms.mu.Lock()
@@ -58,26 +48,11 @@ func (ms *MemoryStore) Set(key string, entry Entry) error {
 	return nil
 }
 
+// Delete removes an entry from memory store
 func (ms *MemoryStore) Delete(key string) error {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
 
 	delete(ms.items, key)
 	return nil
-}
-
-func (ms *MemoryStore) Clear() error {
-	ms.mu.Lock()
-	defer ms.mu.Unlock()
-
-	ms.items = make(map[string]Entry)
-	return nil
-}
-
-func (ms *MemoryStore) Close() error {
-	return ms.Clear()
-}
-
-func (ms *MemoryStore) SetTTL(ttl time.Duration) {
-	ms.ttl = ttl
 }
